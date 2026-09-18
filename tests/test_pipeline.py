@@ -2,23 +2,30 @@
 Comprehensive Automated Test Suite for Stock Trend Analysis & Return Forecasting
 Validates data hygiene, feature calculations, time-series split barriers,
 model integrity, Power BI exports, and visual artifacts.
+
+Can be run via:
+    pytest -v tests/test_pipeline.py
+OR directly with:
+    python tests/test_pipeline.py
 """
 
 import json
+import sys
 import zipfile
 from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-import pytest
 from sklearn.ensemble import RandomForestRegressor
 
 # Project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-@pytest.fixture(scope="session")
-def raw_combined():
+# ============================================================================
+# Core Data Loaders (Decoupled from Fixtures)
+# ============================================================================
+def load_raw_combined() -> pd.DataFrame:
     path = PROJECT_ROOT / "data/raw/combined_raw.csv"
     assert path.exists(), f"Missing {path}"
     df = pd.read_csv(path)
@@ -26,8 +33,7 @@ def raw_combined():
     return df
 
 
-@pytest.fixture(scope="session")
-def cleaned_df():
+def load_cleaned_df() -> pd.DataFrame:
     path = PROJECT_ROOT / "data/processed/cleaned_data.csv"
     assert path.exists(), f"Missing {path}"
     df = pd.read_csv(path)
@@ -35,8 +41,7 @@ def cleaned_df():
     return df
 
 
-@pytest.fixture(scope="session")
-def featured_df():
+def load_featured_df() -> pd.DataFrame:
     path = PROJECT_ROOT / "data/processed/featured_data.csv"
     assert path.exists(), f"Missing {path}"
     df = pd.read_csv(path)
@@ -44,12 +49,37 @@ def featured_df():
     return df
 
 
-@pytest.fixture(scope="session")
-def trained_model():
+def load_trained_model():
     path = PROJECT_ROOT / "models/random_forest_model.pkl"
     assert path.exists(), f"Missing {path}"
     model = joblib.load(path)
     return model
+
+
+# ============================================================================
+# Pytest Fixture Wrappers
+# ============================================================================
+try:
+    import pytest
+
+    @pytest.fixture(scope="session")
+    def raw_combined():
+        return load_raw_combined()
+
+    @pytest.fixture(scope="session")
+    def cleaned_df():
+        return load_cleaned_df()
+
+    @pytest.fixture(scope="session")
+    def featured_df():
+        return load_featured_df()
+
+    @pytest.fixture(scope="session")
+    def trained_model():
+        return load_trained_model()
+
+except ImportError:
+    pytest = None
 
 
 # ============================================================================
@@ -68,8 +98,10 @@ def test_raw_data_files_exist():
             assert not df[col].isnull().any(), f"Null values in {ticker} {col}"
 
 
-def test_raw_combined_dates(raw_combined):
+def test_raw_combined_dates(raw_combined=None):
     """Verify combined raw data spans 2023 through 2024 without duplicates."""
+    if raw_combined is None:
+        raw_combined = load_raw_combined()
     assert raw_combined["Date"].min() >= pd.to_datetime("2023-01-01")
     assert raw_combined["Date"].max() <= pd.to_datetime("2024-12-31")
     assert set(raw_combined["Ticker"].unique()) == {"AAPL", "MSFT", "TSLA"}
@@ -78,8 +110,10 @@ def test_raw_combined_dates(raw_combined):
 # ============================================================================
 # 2. Data Cleaning & Synchronization Tests
 # ============================================================================
-def test_cleaned_calendar_synchronization(cleaned_df):
+def test_cleaned_calendar_synchronization(cleaned_df=None):
     """Verify inner join on Date across all 3 tickers keeps identical dates."""
+    if cleaned_df is None:
+        cleaned_df = load_cleaned_df()
     dates_per_ticker = cleaned_df.groupby("Ticker")["Date"].apply(set)
     aapl_dates = dates_per_ticker["AAPL"]
     msft_dates = dates_per_ticker["MSFT"]
@@ -94,8 +128,10 @@ def test_cleaned_calendar_synchronization(cleaned_df):
 # ============================================================================
 # 3. Feature Engineering Tests
 # ============================================================================
-def test_featured_dataset_properties(featured_df):
+def test_featured_dataset_properties(featured_df=None):
     """Verify engineered indicators, row counts, and no residual NaNs."""
+    if featured_df is None:
+        featured_df = load_featured_df()
     # 450 rows per ticker (501 - 50 warm-up - 1 target shift = 450)
     counts = featured_df.groupby("Ticker").size().to_dict()
     assert counts == {"AAPL": 450, "MSFT": 450, "TSLA": 450}, f"Unexpected row distribution: {counts}"
@@ -128,8 +164,10 @@ def test_featured_dataset_properties(featured_df):
 # ============================================================================
 # 4. Time-Aware Split & No-Leakage Tests
 # ============================================================================
-def test_time_aware_split_no_leakage(featured_df):
+def test_time_aware_split_no_leakage(featured_df=None):
     """Verify strict chronological barrier between train and test."""
+    if featured_df is None:
+        featured_df = load_featured_df()
     train_df = featured_df[featured_df["Date"] <= "2024-06-30"]
     test_df = featured_df[featured_df["Date"] >= "2024-07-01"]
 
@@ -147,8 +185,13 @@ def test_time_aware_split_no_leakage(featured_df):
 # ============================================================================
 # 5. Model & Prediction Integrity Tests
 # ============================================================================
-def test_trained_model_inference(trained_model, featured_df):
+def test_trained_model_inference(trained_model=None, featured_df=None):
     """Verify model type, feature names, and inference capability."""
+    if trained_model is None:
+        trained_model = load_trained_model()
+    if featured_df is None:
+        featured_df = load_featured_df()
+
     assert isinstance(trained_model, RandomForestRegressor), "Model is not a RandomForestRegressor!"
     assert hasattr(trained_model, "feature_importances_"), "Model missing feature importances!"
     assert len(trained_model.feature_importances_) == 24, "Expected 24 feature importances!"
@@ -252,3 +295,50 @@ def test_notebook_executed_outputs():
     # Verify at least several code cells have pre-rendered outputs
     cells_with_outputs = [c for c in code_cells if len(c.get("outputs", [])) > 0]
     assert len(cells_with_outputs) >= 6, "Notebook has not been pre-executed with outputs!"
+
+
+# ============================================================================
+# Standalone CLI Runner (python tests/test_pipeline.py)
+# ============================================================================
+def main():
+    print("=" * 70)
+    print("RUNNING AUTOMATED TEST SUITE: Stock Trend Analysis & Return Forecasting")
+    print("=" * 70)
+
+    test_functions = [
+        ("Raw Data Files Exist & Complete", test_raw_data_files_exist),
+        ("Raw Combined Dates & Tickers", test_raw_combined_dates),
+        ("Clean Calendar Synchronization (Inner Join)", test_cleaned_calendar_synchronization),
+        ("Feature Engineering & Indicator Bounds", test_featured_dataset_properties),
+        ("Time-Aware Split & Non-Leakage Barrier", test_time_aware_split_no_leakage),
+        ("Model Loading & Inference Engine", test_trained_model_inference),
+        ("Power BI Data Exports (Excel, CSV, PBIX)", test_powerbi_data_exports),
+        ("Visual Figures & Previews Existence", test_visual_figures_and_previews),
+        ("Jupyter Notebook Pre-Executed Outputs", test_notebook_executed_outputs),
+    ]
+
+    passed = 0
+    failed = 0
+
+    for name, fn in test_functions:
+        try:
+            fn()
+            print(f"  [PASS] {name}")
+            passed += 1
+        except Exception as e:
+            print(f"  [FAIL] {name}: {e}")
+            failed += 1
+
+    print("\n" + "=" * 70)
+    print(f"TEST RESULTS: {passed} PASSED, {failed} FAILED")
+    print("=" * 70)
+
+    if failed > 0:
+        sys.exit(1)
+    else:
+        print("ALL TESTS PASSED SUCCESSFULLY! PROJECT IS VERIFIED & READY.")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
