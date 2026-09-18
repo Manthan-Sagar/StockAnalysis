@@ -1,0 +1,45 @@
+{
+    "model_type": "RandomForestRegressor",
+    "random_state": 42,
+    "best_params": {
+        "max_depth": 5,
+        "max_features": "sqrt",
+        "min_samples_leaf": 4,
+        "min_samples_split": 2,
+        "n_estimators": 100
+    },
+    "best_cv_rmse": 2.134013214182243,
+    "baseline_metrics": {
+        "baseline_rmse": 2.836662329706555,
+        "baseline_mae": 1.7486811989708375,
+        "baseline_r2": -0.007436482696278057
+    },
+    "feature_names": [
+        "Daily_Return",
+        "SMA_10",
+        "SMA_20",
+        "SMA_50",
+        "EMA_12",
+        "EMA_26",
+        "MACD",
+        "MACD_Signal",
+        "Volatility_10",
+        "Volatility_20",
+        "Bollinger_Upper",
+        "Bollinger_Lower",
+        "Bollinger_Width",
+        "RSI_14",
+        "Volume_Change",
+        "Volume_SMA_10",
+        "High_Low_Spread",
+        "Close_to_SMA20_Ratio",
+        "Return_Lag_1",
+        "Return_Lag_2",
+        "Return_Lag_3",
+        "Ticker_AAPL",
+        "Ticker_MSFT",
+        "Ticker_TSLA"
+    ],
+    "train_end_date": "2024-06-30",
+    "test_start_date": "2024-07-01"
+}
