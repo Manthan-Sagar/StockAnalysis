@@ -5,6 +5,7 @@ env/
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
@@ -16,6 +17,18 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Power BI temp files
+# Test cache
+.pytest_cache/
+
+# Large data files
+data/raw/*.parquet
+data/processed/*.parquet
+*.parquet
+
+# Model binaries
+models/*.pkl
+models/*.joblib
+
+# Scratch and temp files
 *.tmp
 ~$*.xlsx

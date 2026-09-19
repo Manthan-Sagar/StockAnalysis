@@ -1,6 +1,9 @@
 """
-Stock Trend Analysis & Return Forecasting — NASDAQ Large-Cap Equities
-Source package containing data acquisition, feature engineering, modeling, evaluation, and Power BI export modules.
+Cross-Sectional Equity Forecasting & Friction-Adjusted Long/Short Backtest
+
+An institutional-style quantitative research pipeline for predicting
+cross-sectional residual returns, constructing dollar-neutral portfolios,
+and backtesting with realistic transaction costs.
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
