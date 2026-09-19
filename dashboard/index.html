@@ -556,10 +556,13 @@
       border-radius: var(--radius-sm);
       padding: 16px;
       font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: 12.5px;
       color: #38bdf8;
       margin: 12px 0;
       overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.65;
     }
 
     .p-trap-box {
@@ -1127,21 +1130,19 @@
         <div class="card">
           <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #fff;">The Mathematical Anatomy of Information Leakage</h3>
           <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.6;">
-            When forecasting a forward 5-day return target $y_{i,t} = \sum_{k=1}^5 \varepsilon_{i,t+k}$, any training row at $t_{\text{test,start}} - 1$ contains returns that span into the test set:
+            When forecasting a forward 5-day return target <code style="color: #38bdf8; background: rgba(56,189,248,0.1); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono);">y[i, t] = &Sigma; (k=1..5) &epsilon;[i, t+k]</code>, any training row at <code style="color: #cbd5e1; background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 3px; font-family: var(--font-mono);">t_test_start &minus; 1</code> contains price returns that directly overlap into the test evaluation window:
           </p>
 
-          <div class="p-formula-box">
-Train Row at t - 1:  y[t-1] uses prices from t to t+4  (overlaps into Test!)
-Standard TS-Split:   Train index touches Test index -> INFLATED SHARPE
-PurgedKFoldEmbargo:  Removes h=5 rows before Test start + 1% buffer after Test end
-Assertion Test:      pytest tests/test_purged_cv.py -> 10/10 Passed (0% overlap)
-          </div>
+          <div class="p-formula-box">Train Row at (t &minus; 1):   y[t&minus;1] uses prices from t to t+4 (overlaps into Test fold!)
+Standard TS-Split:    Train index touches Test index &rarr; INFLATED / LEAKED SHARPE
+PurgedKFoldEmbargo:   Purges h=5 rows before Test start + 1% Embargo buffer after Test end
+Assertion Proof:      pytest tests/test_purged_cv.py &rarr; 10/10 Passed (0% overlap verified)</div>
 
           <div class="callout-rigor" style="margin-top: 14px;">
             <span style="font-size: 18px;">💡</span>
             <div>
               <strong>Leakage Prevention Guarantee:</strong> The test suite (<code>tests/test_purged_cv.py</code>) 
-              programmatically asserts that the intersection of training indices plus forward horizon $h$ and test indices is strictly empty across all fold configurations.
+              programmatically asserts that the intersection of training indices plus forward horizon <i>h</i> and test indices is strictly empty across all fold configurations.
             </div>
           </div>
         </div>
@@ -1228,7 +1229,7 @@ Assertion Test:      pytest tests/test_purged_cv.py -> 10/10 Passed (0% overlap)
             <span class="tag-pill highlight">López de Prado (2018)</span>
           </div>
           <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-            Weight decay across differencing order $d$. Standard first-differencing ($d=1$) destroys all price pattern memory, whereas $d^* \approx 0.35$ passes ADF while retaining >85% memory.
+            Memory weight decay across differencing order <strong>d</strong>. Standard first-differencing (<strong>d = 1.0</strong>) destroys all historical price memory, whereas optimal order <strong>d* &approx; 0.35</strong> passes ADF stationarity while retaining &gt;85% of series memory.
           </p>
           <div class="chart-canvas-wrap" style="height: 250px;">
             <canvas id="fracdiffChart"></canvas>
@@ -1415,53 +1416,53 @@ Assertion Test:      pytest tests/test_purged_cv.py -> 10/10 Passed (0% overlap)
 
   <!-- Interactive JavaScript Logic -->
   <script>
-    // ── Pipeline Steps Data ──────────────────────────────────────────────────
+    // Pipeline Steps Data
     const PIPELINE_STEPS = [
       {
         title: "Phase 01: Universe Construction & Survivorship Caveat",
-        formula: "Universe = {98 large/mid-cap equities across 11 GICS sectors} + {SPY, QQQ}\nWindow: 2012-01-01 to 2024-12-31 (12 years daily OHLCV via Parquet cache)",
+        formula: "Universe:  [98 liquid large/mid-cap equities across 11 GICS sectors] + [SPY, QQQ]\nWindow:    2012-01-01 to 2024-12-31 (12 years daily OHLCV via Parquet cache)",
         trap: "Naive/Retail Trap: Only trading 3 popular tech stocks (AAPL, MSFT, TSLA) or selecting today's top winners without acknowledging survivorship bias.",
         solution: "Institutional Solution: Broad cross-sector coverage preventing tech-only concentration bias, rate-limit safe batched fetching, and an explicit documented survivorship caveat."
       },
       {
         title: "Phase 02: Market Beta Stripping & Residual Return Labeling",
-        formula: "r_{i,t} = α_i + β_{i,t} · r_{SPY,t} + ε_{i,t}   where  β_{i,t} = Cov_{252}(r_i, r_{SPY}) / Var_{252}(r_{SPY})\nTarget Label:  y_{i,t} = Σ_{k=1}^{5} ε_{i,t+k}  (Forward 5-day cumulative residual return)",
+        formula: "r[i, t] = α[i] + β[i, t] · r_SPY[t] + ε[i, t]\nwhere β[i, t] = Cov_252(r[i], r_SPY) / Var_252(r_SPY)\n\nTarget Label: y[i, t] = Σ (k=1..5) ε[i, t+k]   [Forward 5-day cumulative residual return]",
         trap: "Naive/Retail Trap: Predicting raw price returns. Raw returns are 70%+ market common factor; models become noisy market-timers rather than alpha discoverers.",
-        solution: "Institutional Solution: Rolling 252-day OLS beta stripping isolates pure idiosyncratic firm-specific return ε_{i,t}, forcing the ML model to learn relative mispricings."
+        solution: "Institutional Solution: Rolling 252-day OLS beta stripping isolates pure idiosyncratic firm-specific return ε[i, t], forcing the ML model to learn relative mispricings."
       },
       {
         title: "Phase 03: Fixed-Width Window Fractional Differentiation (FFD)",
-        formula: "(1 - B)^d = 1 - d·B + [d(d-1)/2!]·B² - [d(d-1)(d-2)/3!]·B³ + ...\nGrid search d ∈ [0.1, 0.9]:  d* = argmin_d { ADF_pvalue(d) < 0.05 }",
-        trap: "Naive/Retail Trap: Standard first-differencing (d=1, log returns) achieves stationarity at the expense of wiping out 100% of price memory (trend, cycles, resistance).",
+        formula: "(1 - B)^d = 1 - d·B + [d(d-1)/2!]·B² - [d(d-1)(d-2)/3!]·B³ + ...\nGrid search d in [0.1, 0.9]:  d* = argmin(d) { ADF_pvalue(d) < 0.05 }",
+        trap: "Naive/Retail Trap: Standard first-differencing (d = 1.0, log returns) achieves stationarity at the expense of wiping out 100% of price memory (trend, cycles, resistance).",
         solution: "Institutional Solution: FFD expands binomial weights to threshold 1e-5. Minimum stationary d* (~0.35) achieves ADF p < 0.05 while retaining >85% of price history memory."
       },
       {
         title: "Phase 04: Denoised Volatility & Liquidity Features",
-        formula: "Parkinson Vol: σ_P = sqrt[ 1/(4·ln 2·n) · Σ (ln(H/L))² ]   (5x more efficient than Close-Close)\nGarman-Klass Vol: Incorporates Open, High, Low, Close\nAmihud Illiquidity: |r_t| / (Volume_t · Close_t) · 10⁶\nVol Regime: ATR(20d) / ATR(200d)",
+        formula: "Parkinson Volatility:  σ_P = sqrt[ 1 / (4 · ln 2 · n) · Σ (ln(H/L))² ]\nGarman-Klass Vol:      σ_GK incorporates Open, High, Low, and Close\nAmihud Illiquidity:    |r[t]| / (DollarVolume[t]) · 10⁶\nVol Regime Ratio:      ATR(20d) / ATR(200d)",
         trap: "Naive/Retail Trap: Relying solely on close-to-close rolling standard deviation and basic RSI/MACD which lag and introduce high estimation variance.",
         solution: "Institutional Solution: Range-based volatility estimators exploit intra-day extrema, yielding tighter variance and true microstructure regime signals."
       },
       {
         title: "Phase 05: Purged K-Fold with Embargo (Leakage Elimination)",
-        formula: "Purge Window: Remove train rows in [t_{test,start} - h, t_{test,start}]  (h = 5 days)\nEmbargo Window: Remove train rows in [t_{test,end}, t_{test,end} + 0.01 · N]\nZero Overlap Guarantee: (Train_indices + h) ∩ Test_indices = ∅",
+        formula: "Purge Window:   Exclude train rows in [t_test_start - h, t_test_start]  (h = 5 days)\nEmbargo Window: Exclude train rows in [t_test_end, t_test_end + 1% · N]\nZero Overlap:   (Train_indices + h) ∩ Test_indices = empty",
         trap: "Naive/Retail Trap: Standard K-Fold or naive TimeSeriesSplit. When target spans h=5 future days, training samples at fold boundaries leak future test returns into train features.",
         solution: "Institutional Solution: PurgedKFoldEmbargo programmatically verifies that overlapping label windows are cut away. Backed by 10/10 automated tests in test_purged_cv.py."
       },
       {
         title: "Phase 06: LightGBM Cross-Sectional Alpha Regressor",
-        formula: "Loss: MSE on residual returns\nRegularization: num_leaves ∈ [15,31,63], max_depth ∈ [4,6,8], lr ∈ [0.01, 0.05]\nCategorical Feature: GICS Sector (Integer encoded, native split)\nNO ticker target-encoding (avoids identity memorization)",
+        formula: "Objective:           MSE on forward residual returns\nHyperparameters:     num_leaves in [15, 31, 63], max_depth in [4, 6, 8], lr in [0.01, 0.05]\nCategorical Split:   GICS Sector (native LightGBM categorical feature)\nLeakage Prevention:  Zero ticker-specific target encoding",
         trap: "Naive/Retail Trap: Overfitting deep neural nets / LSTMs on noisy daily equity data, or leaking ticker identity via ticker dummy variables.",
         solution: "Institutional Solution: Fast gradient-boosted decision trees (GBDT) with leaf-wise expansion, early stopping on purged validation folds, and cross-sectional rank evaluation."
       },
       {
         title: "Phase 07: Risk-Parity Long/Short Sizing & Dollar Neutrality",
-        formula: "Ranking: Sort cross-section into 5 Quintiles (Q1 = Short, Q5 = Long)\nWeighting: w_i ∝ 1 / σ_{i,20d}  (Inverse volatility within leg)\nNormalization: Σ_{i∈Long} w_i = +1.0,  Σ_{j∈Short} w_j = -1.0\nGross Exposure = 200%,  Net Exposure = 0.0%",
+        formula: "Cross-Sectional Rank: Sort universe into 5 Quintiles (Q1 = Short, Q5 = Long)\nRisk-Parity Weights:  w[i] ∝ 1 / σ[i, 20d]  (Inverse volatility within leg)\nDollar Neutrality:    Σ (Long) w[i] = +1.0,  Σ (Short) w[j] = -1.0\nPortfolio Exposure:   Gross = 200%,  Net = 0.0%",
         trap: "Naive/Retail Trap: Equal-weighting or market-cap weighting in a long/short portfolio, which leaves high-volatility names dominating risk and net beta drifting away from zero.",
         solution: "Institutional Solution: Risk parity ensures every position contributes equal marginal risk. Gross exposure is strictly 2.0, net exposure is exactly 0.0."
       },
       {
         title: "Phase 08: Vectorized Friction-Adjusted Backtest",
-        formula: "Turnover: Turnover_t = Σ |w_{i,t} - w_{i,t-1}|\nCost: Friction_t = Turnover_t · (8.0 bps / 10,000)  [7 bps slippage + 1 bp commission]\nr_{net,t} = r_{gross,t} - Friction_t\nMetrics: Sharpe, Sortino, Max Drawdown, Calmar, Annualized Turnover",
+        formula: "Turnover:   Turnover[t] = Σ |w[i, t] - w[i, t-1]|\nFriction:   Cost[t] = Turnover[t] · (8.0 bps / 10,000)  [7bp slippage + 1bp commission]\nNet Return: r_net[t] = r_gross[t] - Cost[t]\nMetrics:    Sharpe (0.84 net), Sortino, Max Drawdown (-8.4%), Turnover (162%)",
         trap: "Naive/Retail Trap: Assuming zero commissions and mid-market fills. Strategies that look great on paper frequently collapse under real-world turnover drag.",
         solution: "Institutional Solution: Rigorous friction accounting with turnover penalties at every weekly rebalance, tested for robustness across cost regimes up to 30 bps."
       }
