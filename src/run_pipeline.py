@@ -42,9 +42,10 @@ TEST_START = "2023-01-01"
 LABEL_HORIZON = 5
 REBALANCE_FREQ = 5
 COST_BPS = 8.0
+DEFAULT_STRATEGY_MODE = "long_only"
 
 
-def main(force_refresh: bool = False):
+def main(force_refresh: bool = False, strategy_mode: str = DEFAULT_STRATEGY_MODE):
     """Run the complete research pipeline end-to-end."""
     logging.basicConfig(
         level=logging.INFO,
@@ -52,7 +53,7 @@ def main(force_refresh: bool = False):
     )
 
     print("=" * 70)
-    print("CROSS-SECTIONAL EQUITY FORECASTING & L/S BACKTEST PIPELINE")
+    print(f"CROSS-SECTIONAL EQUITY FORECASTING & {strategy_mode.upper()} BACKTEST")
     print("=" * 70)
     start_total = time.time()
 
@@ -110,30 +111,33 @@ def main(force_refresh: bool = False):
     print(f"Phase 6 completed in {time.time() - t0:.1f}s\n")
 
     # ── Phase 7: Portfolio Construction ───────────────────────────────────
-    print(">>> PHASE 7: Portfolio Construction (Dollar-Neutral L/S)")
+    print(f">>> PHASE 7: Portfolio Construction ({strategy_mode})")
     t0 = time.time()
     portfolio_df = construct_portfolio(
         predictions,
         score_col="predicted_score",
         vol_col="realized_vol_20",
         rebalance_freq=REBALANCE_FREQ,
+        strategy_mode=strategy_mode,
     )
 
     # Verify weights
     weight_summary = verify_portfolio_weights(portfolio_df)
     if not weight_summary.empty:
-        mean_net = weight_summary["net_exposure"].abs().mean()
+        mean_net = weight_summary["net_exposure"].mean()
         mean_gross = weight_summary["gross_exposure"].mean()
         print(f"  Mean gross exposure: {mean_gross:.2f}")
-        print(f"  Mean abs net exposure: {mean_net:.4f}")
+        print(f"  Mean net exposure:   {mean_net:.4f}")
     print(f"Phase 7 completed in {time.time() - t0:.1f}s\n")
 
     # ── Phase 8 & 9: Backtest & Tearsheet ─────────────────────────────────
     print(">>> PHASE 8-9: Backtest & Performance Reporting")
     t0 = time.time()
+    strategy_label = "Long-Alpha Strategy" if strategy_mode == "long_only" else "L/S Strategy"
     daily_returns, metrics = run_backtest(
         portfolio_df, panel, ic_df,
         total_cost_bps=COST_BPS,
+        strategy_label=strategy_label,
     )
     print(f"Phase 8-9 completed in {time.time() - t0:.1f}s\n")
 
@@ -147,6 +151,7 @@ def main(force_refresh: bool = False):
                                 for k, v in metrics.items()},
         "optimal_fracdiff_d": {k: float(v) for k, v in optimal_ds.items()},
         "config": {
+            "strategy_mode": strategy_mode,
             "train_end": TRAIN_END,
             "test_start": TEST_START,
             "label_horizon": LABEL_HORIZON,
@@ -173,5 +178,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the full research pipeline.")
     parser.add_argument("--force-refresh", action="store_true",
                         help="Force re-download of all market data.")
+    parser.add_argument("--strategy-mode", choices=["long_only", "dollar_neutral"],
+                        default="long_only",
+                        help="Portfolio strategy mode (default: long_only).")
     args = parser.parse_args()
-    main(force_refresh=args.force_refresh)
+    main(force_refresh=args.force_refresh, strategy_mode=args.strategy_mode)
