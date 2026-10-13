@@ -174,18 +174,31 @@ def run_ranking_evaluation(
     # Generate predictions
     predictions = generate_predictions(model, test_df, feature_names)
 
-    # Compute IC time series
+    # Compute IC time series vs forward residual return (the true prediction target)
+    target_col = "fwd_residual_return" if "fwd_residual_return" in test_df.columns else "fwd_raw_return"
     ic_df = compute_cross_sectional_ic(
         predictions,
         predicted_col="predicted_score",
-        realized_col="fwd_raw_return",
+        realized_col=target_col,
     )
 
-    # Aggregate
+    # Aggregate residual IC metrics
     ic_summary = compute_ic_summary(ic_df)
 
+    # Also compute raw return IC for benchmark cross-reference
+    if "fwd_raw_return" in test_df.columns:
+        ic_raw_df = compute_cross_sectional_ic(
+            predictions,
+            predicted_col="predicted_score",
+            realized_col="fwd_raw_return",
+        )
+        ic_raw_summary = compute_ic_summary(ic_raw_df)
+        ic_summary["raw_mean_ic"] = ic_raw_summary["mean_ic"]
+        ic_summary["raw_ir"] = ic_raw_summary["ir"]
+        ic_summary["raw_ic_tstat"] = ic_raw_summary["ic_tstat"]
+
     print(f"\n[ranking] ==========================================")
-    print(f"  Cross-Sectional Rank IC Summary")
+    print(f"  Cross-Sectional Rank IC Summary (Residual Alpha)")
     print(f"  --------------------------------------------------")
     print(f"  Mean IC:       {ic_summary['mean_ic']:+.4f}")
     print(f"  IC Std:         {ic_summary['ic_std']:.4f}")
@@ -193,6 +206,8 @@ def run_ranking_evaluation(
     print(f"  IC t-stat:      {ic_summary['ic_tstat']:+.2f}")
     print(f"  Periods:        {ic_summary['n_periods']}")
     print(f"  % Positive IC:  {ic_summary['pct_positive']:.1f}%")
+    if "raw_mean_ic" in ic_summary:
+        print(f"  Raw Return IC:  {ic_summary['raw_mean_ic']:+.4f} (t={ic_summary['raw_ic_tstat']:+.2f})")
     print(f"  ==================================================")
 
     return predictions, ic_df, ic_summary
