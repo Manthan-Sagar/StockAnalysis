@@ -96,9 +96,10 @@ def construct_portfolio(
     vol_col: str = "realized_vol_20",
     rebalance_freq: int = 5,
     n_quantiles: int = 5,
+    strategy_mode: str = "long_only",
 ) -> pd.DataFrame:
     """
-    Construct a dollar-neutral long/short portfolio with weekly rebalancing.
+    Construct a risk-parity portfolio with weekly or periodic rebalancing.
 
     Parameters
     ----------
@@ -111,13 +112,16 @@ def construct_portfolio(
     rebalance_freq : int
         Rebalance every N trading days (default 5 = weekly).
     n_quantiles : int
-        Number of quantiles for leg assignment.
+        Number of quantiles for leg assignment (default 5 = quintiles).
+    strategy_mode : str
+        'long_only': Long top quintile (Q5) sized by inverse volatility (weights sum to 1.0).
+        'dollar_neutral': Long Q5 (+1.0), Short Q1 (-1.0).
 
     Returns
     -------
     pd.DataFrame
         Portfolio DataFrame with columns:
-        [date, ticker, weight, leg, daily_return, next_day_return].
+        [date, ticker, weight, leg, daily_return, rebalance_date].
     """
     df = panel.copy()
     df["Date"] = pd.to_datetime(df["Date"])
@@ -146,7 +150,21 @@ def construct_portfolio(
             vols = valid.set_index("Ticker")[vol_col]
 
             legs = rank_and_assign_legs(scores, n_quantiles=n_quantiles)
-            weights = inverse_vol_weights(vols, legs)
+
+            if strategy_mode == "long_only":
+                # Long top quintile Q5 only, inverse-vol weighted, normalized to sum to +1.0
+                long_mask = legs == 1
+                vols_long = vols[long_mask].replace(0, np.nan).dropna()
+                if not vols_long.empty:
+                    inv_vol = 1.0 / vols_long
+                    norm_weights = inv_vol / inv_vol.sum()
+                    weights = pd.Series(0.0, index=vols.index)
+                    weights.loc[norm_weights.index] = norm_weights
+                else:
+                    weights = pd.Series(0.0, index=vols.index)
+            else:
+                # Dollar-neutral: top quintile +1.0, bottom quintile -1.0
+                weights = inverse_vol_weights(vols, legs)
 
             current_weights = weights.to_dict()
             current_rebal_date = date
@@ -179,7 +197,7 @@ def construct_portfolio(
         n_rebal = len(rebalance_dates)
         n_long = (portfolio_df["leg"] == "long").sum()
         n_short = (portfolio_df["leg"] == "short").sum()
-        print(f"[sizing] Portfolio constructed:")
+        print(f"[sizing] Portfolio constructed ({strategy_mode}):")
         print(f"  Rebalance dates: {n_rebal}")
         print(f"  Long positions:  {n_long:,}")
         print(f"  Short positions: {n_short:,}")
