@@ -130,6 +130,32 @@ class TestComputePortfolioReturns:
             decimal=10,
         )
 
+    def test_long_only_portfolio_returns(self):
+        """Verify long-only portfolio returns with gross exposure = 1.0 and non-negative weights."""
+        dates = pd.date_range("2024-01-01", periods=3, freq="B")
+        records = []
+        ret_a = [0.01, -0.005, 0.02]
+        ret_b = [0.02, 0.01, -0.01]
+        for i, d in enumerate(dates):
+            records.append({
+                "date": d, "ticker": "A", "weight": 0.4,
+                "daily_return": ret_a[i], "rebalance_date": dates[0], "leg": "long",
+            })
+            records.append({
+                "date": d, "ticker": "B", "weight": 0.6,
+                "daily_return": ret_b[i], "rebalance_date": dates[0], "leg": "long",
+            })
+        df = pd.DataFrame(records)
+        res = compute_portfolio_returns(df, total_cost_bps=8)
+        # Day 1 gross return = 0.4 * 0.01 + 0.6 * 0.02 = 0.016
+        np.testing.assert_almost_equal(res["gross_return"].iloc[0], 0.016, decimal=10)
+        # Day 1 turnover = 0.4 + 0.6 = 1.0 -> cost = 1.0 * 8 / 10000 = 0.0008
+        np.testing.assert_almost_equal(res["cost"].iloc[0], 0.0008, decimal=10)
+        np.testing.assert_almost_equal(res["net_return"].iloc[0], 0.016 - 0.0008, decimal=10)
+        # Day 2 turnover = 0.0 -> cost = 0.0
+        np.testing.assert_almost_equal(res["turnover"].iloc[1], 0.0, decimal=10)
+
+
 
 class TestPerformanceMetrics:
     """Tests for performance metric computations."""
