@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from src.portfolio.sizing import (
+    construct_portfolio,
     inverse_vol_weights,
     rank_and_assign_legs,
     verify_portfolio_weights,
@@ -172,6 +173,43 @@ class TestInverseVolWeights:
         np.testing.assert_almost_equal(long_sum, 1.0, decimal=10)
         np.testing.assert_almost_equal(short_sum, -1.0, decimal=10)
         np.testing.assert_almost_equal(gross, 2.0, decimal=10)
+
+
+class TestConstructPortfolio:
+    """Tests for construct_portfolio with different strategy modes."""
+
+    @pytest.fixture
+    def synthetic_panel(self):
+        dates = pd.date_range("2024-01-01", periods=10, freq="B")
+        tickers = [f"T{i:02d}" for i in range(20)]
+        records = []
+        for d in dates:
+            for i, t in enumerate(tickers):
+                records.append({
+                    "Date": d,
+                    "Ticker": t,
+                    "predicted_score": float(i),
+                    "realized_vol_20": 0.02 + 0.001 * i,
+                    "daily_return": 0.001 * (i % 3),
+                })
+        return pd.DataFrame(records)
+
+    def test_long_only_weights_sum_to_one(self, synthetic_panel):
+        """In long_only mode, weights across all long positions per date must sum to 1.0."""
+        port = construct_portfolio(synthetic_panel, rebalance_freq=5, strategy_mode="long_only")
+        assert not port.empty
+        # Verify no short positions
+        assert (port["leg"] == "short").sum() == 0
+        for date, group in port.groupby("date"):
+            np.testing.assert_almost_equal(group["weight"].sum(), 1.0, decimal=8)
+
+    def test_dollar_neutral_weights_sum_to_zero(self, synthetic_panel):
+        """In dollar_neutral mode, net weights per date must sum to 0.0."""
+        port = construct_portfolio(synthetic_panel, rebalance_freq=5, strategy_mode="dollar_neutral")
+        assert not port.empty
+        for date, group in port.groupby("date"):
+            np.testing.assert_almost_equal(group["weight"].sum(), 0.0, decimal=8)
+            np.testing.assert_almost_equal(group["weight"].abs().sum(), 2.0, decimal=8)
 
 
 if __name__ == "__main__":
