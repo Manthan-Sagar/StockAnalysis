@@ -235,6 +235,7 @@ def generate_tearsheet(
     ic_df: pd.DataFrame,
     metrics: Dict[str, float],
     output_path: Path = Path("outputs/tearsheet.png"),
+    strategy_label: str = "Alpha Strategy",
 ) -> None:
     """
     Generate a 4-panel tearsheet:
@@ -255,6 +256,8 @@ def generate_tearsheet(
         Performance metrics dict.
     output_path : Path
         Output file path.
+    strategy_label : str
+        Display label for the strategy (default 'Alpha Strategy').
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -272,9 +275,9 @@ def generate_tearsheet(
     dates = pd.to_datetime(daily_returns["date"])
 
     ax1.plot(dates, daily_returns["cum_net"], color=strategy_color,
-             linewidth=2.0, label="L/S Strategy (net)", zorder=3)
+             linewidth=2.0, label=f"{strategy_label} (net)", zorder=3)
     ax1.plot(dates, daily_returns["cum_gross"], color=strategy_color,
-             linewidth=1.0, alpha=0.4, linestyle="--", label="L/S Strategy (gross)")
+             linewidth=1.0, alpha=0.4, linestyle="--", label=f"{strategy_label} (gross)")
 
     for bm_name, bm_df in benchmarks.items():
         bm_dates = pd.to_datetime(bm_df["date"])
@@ -293,7 +296,7 @@ def generate_tearsheet(
                     label=f"{bm_name} Buy & Hold")
 
     ax1.axhline(1.0, color="gray", linestyle=":", alpha=0.5)
-    ax1.set_title("Equity Curve: L/S Strategy vs. Benchmarks", fontweight="bold", fontsize=13)
+    ax1.set_title(f"Equity Curve: {strategy_label} vs. Benchmarks", fontweight="bold", fontsize=13)
     ax1.set_ylabel("Cumulative Return")
     ax1.legend(loc="upper left", frameon=True, facecolor="white")
     ax1.grid(True, alpha=0.3)
@@ -382,6 +385,7 @@ def run_backtest(
     ic_df: pd.DataFrame,
     total_cost_bps: float = 8.0,
     output_dir: Path = Path("outputs"),
+    strategy_label: str = "Alpha Strategy",
 ) -> Tuple[pd.DataFrame, Dict[str, float]]:
     """
     End-to-end backtest: compute returns, metrics, benchmarks, and tearsheet.
@@ -394,7 +398,7 @@ def run_backtest(
         Performance metrics.
     """
     print("\n[backtest] ==========================================")
-    print(f"  Running vectorized backtest (cost = {total_cost_bps} bps)")
+    print(f"  Running vectorized backtest (cost = {total_cost_bps} bps, {strategy_label})")
     print(f"  ==================================================")
 
     # Compute portfolio returns
@@ -446,6 +450,7 @@ def run_backtest(
     generate_tearsheet(
         daily_returns, benchmarks, ic_df, metrics_net,
         output_path=output_dir / "tearsheet.png",
+        strategy_label=strategy_label,
     )
 
     # Save daily returns
