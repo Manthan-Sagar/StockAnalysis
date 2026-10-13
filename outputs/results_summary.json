@@ -1,24 +1,27 @@
 {
   "ic_summary": {
-    "mean_ic": -0.007969966996747076,
-    "ic_std": 0.2120474323272605,
-    "ir": -0.03758577460370629,
-    "ic_tstat": -0.8370749455515102,
+    "mean_ic": 0.0630296485131532,
+    "ic_std": 0.20634534618166017,
+    "ir": 0.3054570877390363,
+    "ic_tstat": 6.8028523499489975,
     "n_periods": 496,
-    "pct_positive": 44.75806451612903
+    "pct_positive": 59.67741935483871,
+    "raw_mean_ic": -0.007969966996747076,
+    "raw_ir": -0.03758577460370629,
+    "raw_ic_tstat": -0.8370749455515102
   },
   "performance_metrics": {
-    "total_return": -0.2611608647386018,
-    "annualized_return": -0.14253803640088814,
-    "annualized_volatility": 0.1541802079554009,
-    "sharpe_ratio": -0.9202484585354905,
-    "sortino_ratio": -1.522321253354097,
-    "max_drawdown": -0.3536761151740916,
-    "calmar_ratio": -0.4030185536581287,
-    "annualized_turnover": 65.57687781516638,
-    "win_rate_pct": 47.37903225806452,
+    "total_return": 0.26747930304853096,
+    "annualized_return": 0.12797794094235493,
+    "annualized_volatility": 0.1460602173182775,
+    "sharpe_ratio": 0.8975893941551575,
+    "sortino_ratio": 1.3793302853077614,
+    "max_drawdown": -0.12274226847043734,
+    "calmar_ratio": 1.0426558229464253,
+    "annualized_turnover": 33.18572087787317,
+    "win_rate_pct": 52.62096774193549,
     "n_trading_days": 496.0,
-    "total_cost_bps": 1032.5755998832547
+    "total_cost_bps": 522.5434144579394
   },
   "optimal_fracdiff_d": {
     "AAPL": 0.3,
@@ -123,6 +126,7 @@
     "XOM": 0.2
   },
   "config": {
+    "strategy_mode": "long_only",
     "train_end": "2022-12-31",
     "test_start": "2023-01-01",
     "label_horizon": 5,
